@@ -56,6 +56,13 @@ namespace CreatorSDK.Editor
             string creatorId,
             bool validateBeforeExport)
         {
+            if (!Application.unityVersion.StartsWith("6000.3.13f"))
+            {
+                string errorMsg = $"Incompatible Unity Version: You are using Unity version {Application.unityVersion}. This SDK version only supports Unity version 6000.3.13f.";
+                EditorUtility.DisplayDialog("Incompatible Unity Version", errorMsg, "OK");
+                return ExportResult.Failed(errorMsg);
+            }
+
             if (item?.prefab == null)
             {
                 FileLogger.LogError("No prefab assigned to upload item.");
@@ -278,6 +285,13 @@ namespace CreatorSDK.Editor
             string creatorId,
             bool validateBeforeExport)
         {
+            if (!Application.unityVersion.StartsWith("6000.3.13f"))
+            {
+                string errorMsg = $"Incompatible Unity Version: You are using Unity version {Application.unityVersion}. This SDK version only supports Unity version 6000.3.13f.";
+                EditorUtility.DisplayDialog("Incompatible Unity Version", errorMsg, "OK");
+                return;
+            }
+
             var targets = uploadItems
                 .Where(i => i.prefab != null && i.status != UploadStatus.Invalid)
                 .ToList();
@@ -750,9 +764,9 @@ namespace CreatorSDK.Editor
                 if (src.boneWeights != null && src.boneWeights.Length > 0)
                     dst.boneWeights = src.boneWeights;
 
-                
+
                 dst.RecalculateBounds();
-                
+
                 return dst;
             }
             catch (Exception ex)
