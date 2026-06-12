@@ -1,0 +1,29 @@
+local targetObj = nil
+local isRotating = false
+
+function OnStart()
+    -- Look for the object you named "TestRotator"
+    targetObj = self.FindObject("TestRotator")
+    
+    if targetObj == nil then
+        print("Warning: Could not find 'TestRotator' in the scene!")
+    end
+end
+
+-- Removed 'deltaTime' from the parameters here, since LuaEngine doesn't send it
+function OnUpdate()
+    if isRotating and targetObj ~= nil then
+        -- We now call the global function deltaTime() inside the math!
+        targetObj.Rotate(0, 90 * deltaTime(), 0)
+    end
+end
+
+function OnSnap(targetName)
+    print("SUCCESS: Object Snapped! Starting the rotation engine...")
+    isRotating = true
+end
+
+function OnUnsnap(targetName)
+    print("SUCCESS: Object Unsnapped! Stopping the rotation engine...")
+    isRotating = false
+end

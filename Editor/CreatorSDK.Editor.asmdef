@@ -1,0 +1,18 @@
+{
+    "name": "CreatorSDK.Editor",
+    "rootNamespace": "CreatorSDK.Editor",
+    "references": [
+        "CreatorSDK.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

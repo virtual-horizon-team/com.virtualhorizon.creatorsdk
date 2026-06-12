@@ -1,0 +1,42 @@
+-- Empty = control self. Otherwise control another Lua object by name.
+local TARGET_NAME = ""
+
+local target = self
+local light = {
+    enabled = true,
+    r = 1.0,
+    g = 1.0,
+    b = 1.0,
+    intensity = 1.0,
+    range = 10.0
+}
+
+local function resolveTarget()
+    if TARGET_NAME ~= "" then
+        local found = self.FindObject(TARGET_NAME)
+        if found ~= nil then
+            target = found
+            return
+        end
+        self:Log("Target not found: " .. TARGET_NAME .. " (using self)")
+    end
+    target = self
+end
+
+local function apply()
+    target.SetLightEnabled(light.enabled)
+    target.SetLightColor(light.r, light.g, light.b)
+    target.SetLightIntensity(light.intensity)
+    target.SetLightRange(light.range)
+end
+
+function OnStart()
+    resolveTarget()
+    apply()
+end
+
+function OnInteract(userId)
+    light.enabled = not light.enabled
+    apply()
+    self:Log("Light toggled by " .. userId)
+end

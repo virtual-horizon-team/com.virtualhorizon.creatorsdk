@@ -1,0 +1,144 @@
+#if UNITY_EDITOR
+using System.IO;
+using UnityEditor;
+using UnityEngine;
+
+namespace CreatorSDK.Import
+{
+    [InitializeOnLoad]
+    public class CreatorSDKShaderFixer_GUID_PLACEHOLDER
+    {
+        private const string SessionKey = "CreatorSDKFixed_GUID_PLACEHOLDER";
+        private const string PathMarker = "GUID_PLACEHOLDER";
+        private const string ShaderNamePrefix = "#SDK_ShaderName:";
+
+        static CreatorSDKShaderFixer_GUID_PLACEHOLDER()
+        {
+            if (SessionState.GetBool(SessionKey, false))
+                return;
+
+            SessionState.SetBool(SessionKey, true);
+            EditorApplication.delayCall += Run;
+        }
+
+        private static void Run()
+        {
+            int fixedCount = 0;
+
+            try
+            {
+                string[] materialGuids = AssetDatabase.FindAssets("t:Material");
+                foreach (string materialGuid in materialGuids)
+                {
+                    string materialPath = AssetDatabase.GUIDToAssetPath(materialGuid);
+                    if (string.IsNullOrEmpty(materialPath) || !materialPath.Contains(PathMarker))
+                        continue;
+
+                    Material mat = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
+                    if (mat == null)
+                        continue;
+
+                    string shaderName = ReadShaderName(materialPath);
+                    if (string.IsNullOrEmpty(shaderName))
+                    {
+                        Debug.LogWarning("[CreatorSDK] Shader fixer could not read shader name for " + materialPath);
+                        continue;
+                    }
+
+                    Shader resolvedShader = Shader.Find(shaderName);
+                    if (resolvedShader == null)
+                    {
+                        Debug.LogWarning("[CreatorSDK] Shader '" + shaderName + "' not found. Install the required package.");
+                        continue;
+                    }
+
+                    mat.shader = resolvedShader;
+
+                    // Handle transparency settings based on _Surface property
+                    if (mat.HasProperty("_Surface"))
+                    {
+                        float surface = mat.GetFloat("_Surface");
+                        if (surface > 0.5f) // Transparent
+                        {
+                            mat.SetFloat("_Surface", 1);
+                            mat.SetFloat("_ZWrite", 0);
+                            mat.SetFloat("_AlphaClip", 0);
+                            mat.renderQueue = 3000; // Transparent
+                            mat.SetOverrideTag("RenderType", "Transparent");
+                        }
+                        else // Opaque
+                        {
+                            mat.SetFloat("_Surface", 0);
+                            mat.SetFloat("_ZWrite", 1);
+                            mat.SetFloat("_AlphaClip", 0);
+                            mat.renderQueue = 2000; // Geometry
+                            mat.SetOverrideTag("RenderType", "Opaque");
+                        }
+                    }
+
+                    EditorUtility.SetDirty(mat);
+                    fixedCount++;
+                }
+
+                if (fixedCount > 0)
+                    AssetDatabase.SaveAssets();
+
+                Debug.Log("[CreatorSDK] Shader fixer completed for GUID_PLACEHOLDER. Materials fixed: " + fixedCount);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning("[CreatorSDK] Shader fixer failed for GUID_PLACEHOLDER: " + ex.Message);
+            }
+            finally
+            {
+                DeleteSelf();
+            }
+        }
+
+        private static string ReadShaderName(string materialPath)
+        {
+            try
+            {
+                string fullPath = Path.GetFullPath(materialPath);
+                if (!File.Exists(fullPath))
+                    return null;
+
+                string[] lines = File.ReadAllLines(fullPath);
+                foreach (string line in lines)
+                {
+                    if (line.StartsWith(ShaderNamePrefix))
+                        return line.Substring(ShaderNamePrefix.Length).Trim();
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning("[CreatorSDK] Shader fixer could not inspect " + materialPath + ": " + ex.Message);
+            }
+
+            return null;
+        }
+
+        private static void DeleteSelf()
+        {
+            string[] fixerGuids = AssetDatabase.FindAssets("CreatorSDKShaderFixer_GUID_PLACEHOLDER");
+            bool deleted = false;
+
+            foreach (string fixerGuid in fixerGuids)
+            {
+                string fixerPath = AssetDatabase.GUIDToAssetPath(fixerGuid);
+                if (string.IsNullOrEmpty(fixerPath))
+                    continue;
+
+                if (AssetDatabase.DeleteAsset(fixerPath))
+                    deleted = true;
+            }
+
+            if (deleted)
+            {
+                AssetDatabase.SaveAssets();
+                Debug.Log("[CreatorSDK] Shader fixer removed itself for GUID_PLACEHOLDER.");
+            }
+        }
+    }
+}
+#endif

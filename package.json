@@ -1,0 +1,21 @@
+{
+  "name": "com.virtualhorizon.creatorsdk",
+  "version": "1.0.42",
+  "displayName": "Virtual Horizon Creator SDK",
+  "description": "SDK for creating and exporting interactive 3D assets with custom Lua behavior for the Virtual Horizon platform.",
+  "unity": "6000.3",
+  "unityRelease": "13f1",
+  "author": {
+    "name": "Virtual Horizon",
+    "url": "https://virtualhorizon.com"
+  },
+  "dependencies": {
+    "com.unity.xr.interaction.toolkit": "3.3.1"
+  },
+  "keywords": [
+    "virtual-horizon",
+    "sdk",
+    "creator",
+    "lua"
+  ]
+}

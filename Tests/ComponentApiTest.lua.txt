@@ -1,0 +1,136 @@
+-- Component API test for LuaEngine wrappers
+-- Tests: Light, AudioSource, ParticleSystem (keyed + grouped)
+
+local AUTO_RUN_ON_START = true
+
+local PARTICLE_MAIN_KEY = "default"
+local PARTICLE_SECONDARY_KEY = ""
+local PARTICLE_GROUP_NAME = ""
+
+local running = false
+
+local function log(msg)
+    self.Log("[ComponentApiTest] " .. msg)
+end
+
+local function testLight()
+    log("Light test: start")
+
+    self.SetLightEnabled(true)
+    self.SetLightColor(1.0, 0.75, 0.25)
+    self.SetLightIntensity(2.0)
+    self.SetLightRange(10.0)
+
+    coroutine.yield(wait(0.4))
+
+    self.SetLightColor(0.2, 0.6, 1.0)
+    self.SetLightIntensity(1.2)
+
+    coroutine.yield(wait(0.4))
+
+    self.SetLightEnabled(false)
+    coroutine.yield(wait(0.2))
+    self.SetLightEnabled(true)
+
+    log("Light test: done")
+end
+
+local function testAudio()
+    log("Audio test: start")
+
+    self.SetAudioVolume(0.75)
+    self.SetAudioPitch(1.0)
+    self.SetAudioLoop(false)
+    self.SetAudioMute(false)
+
+    self.PlayAudio()
+    coroutine.yield(wait(0.7))
+
+    log("Audio is playing: " .. tostring(self.IsAudioPlaying()))
+
+    self.PauseAudio()
+    coroutine.yield(wait(0.3))
+
+    self.PlayAudio()
+    coroutine.yield(wait(0.5))
+
+    self.StopAudio()
+    log("Audio is playing after stop: " .. tostring(self.IsAudioPlaying()))
+
+    log("Audio test: done")
+end
+
+local function testParticles()
+    log("Particle test: start")
+
+    self.RefreshParticles()
+    self.SetParticleLoop(PARTICLE_MAIN_KEY, true)
+    self.PlayParticle(PARTICLE_MAIN_KEY)
+
+    coroutine.yield(wait(0.5))
+
+    log("Main particle is playing: " .. tostring(self.IsPlaying(PARTICLE_MAIN_KEY)))
+
+    self.PauseParticle(PARTICLE_MAIN_KEY)
+    coroutine.yield(wait(0.3))
+
+    self.PlayParticle(PARTICLE_MAIN_KEY)
+    coroutine.yield(wait(0.3))
+
+    self.StopParticle(PARTICLE_MAIN_KEY, false)
+    coroutine.yield(wait(0.2))
+
+    self.ClearParticle(PARTICLE_MAIN_KEY)
+
+    if PARTICLE_SECONDARY_KEY ~= "" then
+        self.PlayParticle(PARTICLE_SECONDARY_KEY)
+        coroutine.yield(wait(0.3))
+        self.StopParticle(PARTICLE_SECONDARY_KEY, true)
+    end
+
+    if PARTICLE_GROUP_NAME ~= "" then
+        self.PlayGroup(PARTICLE_GROUP_NAME)
+        coroutine.yield(wait(0.5))
+
+        log("Group is playing: " .. tostring(self.IsGroupPlaying(PARTICLE_GROUP_NAME)))
+
+        self.PauseGroup(PARTICLE_GROUP_NAME)
+        coroutine.yield(wait(0.3))
+
+        self.StopGroup(PARTICLE_GROUP_NAME, true)
+        self.ClearGroup(PARTICLE_GROUP_NAME)
+    end
+
+    log("Particle test: done")
+end
+
+function RunAllTests()
+    if running then
+        log("Test is already running")
+        return
+    end
+
+    running = true
+    log("Starting component API test sequence")
+
+    testLight()
+    testAudio()
+    testParticles()
+
+    running = false
+    log("Component API test sequence finished")
+end
+
+function OnStart()
+    log("Ready")
+    if AUTO_RUN_ON_START then
+        StartCoroutine(RunAllTests)
+    else
+        log("Auto run is disabled. Use Interact to run tests.")
+    end
+end
+
+function OnInteract(userId)
+    log("Interact from: " .. tostring(userId))
+    StartCoroutine(RunAllTests)
+end

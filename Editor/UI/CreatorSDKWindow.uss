@@ -1,0 +1,342 @@
+/* ============================================================
+   Creator SDK – Editor Window Stylesheet
+   Targets Unity 6 UI Toolkit dark theme
+   ============================================================ */
+
+/* ── Root ─────────────────────────────────────────────────── */
+.sdk-root {
+    flex-direction: row;
+    flex-grow: 1;
+    background-color: #111111;
+}
+
+/* ── Sidebar (Left) ────────────────────────────────────────── */
+.sdk-sidebar {
+    width: 200px;
+    background-color: #181818;
+    border-right-width: 1px;
+    border-right-color: #262626;
+    padding: 16px 12px;
+    flex-shrink: 0;
+    flex-direction: column;
+}
+
+.sidebar-logo-section {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.logo-icon {
+    font-size: 24px;
+    color: #ff334b;
+    margin-right: 8px;
+    -unity-font-style: bold;
+}
+
+.logo-text-container {
+    flex-direction: column;
+}
+
+.logo-title {
+    font-size: 15px;
+    -unity-font-style: bold;
+    color: #ffffff;
+}
+
+.logo-subtitle {
+    font-size: 10px;
+    color: #888888;
+}
+
+.btn-new-asset {
+    background-color: #b30e25;
+    color: #ffffff;
+    border-width: 0;
+    border-radius: 4px;
+    padding: 8px;
+    -unity-font-style: bold;
+    font-size: 13px;
+    margin-bottom: 24px;
+    cursor: link;
+}
+
+.btn-new-asset:hover {
+    background-color: #d61833;
+}
+
+.sidebar-menu {
+    flex-direction: column;
+}
+
+.menu-btn {
+    background-color: transparent;
+    color: #aaaaaa;
+    border-width: 0;
+    padding: 10px 12px;
+    -unity-text-align: middle-left;
+    font-size: 13px;
+    margin-bottom: 4px;
+    border-radius: 4px;
+    cursor: link;
+}
+
+.menu-btn:hover {
+    background-color: #262626;
+    color: #ffffff;
+}
+
+.menu-btn-active {
+    background-color: #2b2b2b;
+    color: #ffffff;
+    -unity-font-style: bold;
+    border-right-width: 3px;
+    border-right-color: #ff4d6a;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.logout-btn {
+    color: #ff5555;
+}
+
+.logout-btn:hover {
+    background-color: #331515;
+}
+
+/* ── Right Panel (Right) ────────────────────────────────────── */
+.sdk-right-panel {
+    flex-grow: 1;
+    flex-direction: column;
+    background-color: #111111;
+}
+
+/* ── Right Header ────────────────────────────────────────── */
+.right-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom-width: 1px;
+    border-bottom-color: #222222;
+    background-color: #141414;
+}
+
+.right-header-title-container {
+    flex-direction: row;
+    align-items: center;
+}
+
+.right-header-title {
+    font-size: 18px;
+    -unity-font-style: bold;
+    color: #ffffff;
+    margin-right: 10px;
+}
+
+.version-badge {
+    font-size: 10px;
+    color: #aaaaaa;
+    background-color: #2a2a2a;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.right-header-status-container {
+    flex-direction: row;
+    align-items: center;
+}
+
+.auth-strip-badge-pill {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    margin-right: 12px;
+}
+
+.badge-online {
+    color: #5dde5d;
+    background-color: #1a3a1a;
+    border-color: #2a5a2a;
+    border-width: 1px;
+}
+
+.badge-offline {
+    color: #aaaaaa;
+    background-color: #2a2a2a;
+    border-color: #3a3a3a;
+    border-width: 1px;
+}
+
+.header-icon {
+    font-size: 15px;
+    color: #aaaaaa;
+    margin-left: 12px;
+    cursor: link;
+}
+
+.header-icon:hover {
+    color: #ffffff;
+}
+
+/* ── Content Area ─────────────────────────────────────────── */
+.sdk-content-area {
+    flex-grow: 1;
+    padding: 20px;
+}
+
+/* ── Account, Settings & Help Tab Styles ─────────────────── */
+.account-tab-content, .settings-content, .help-content {
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.panel-card {
+    background-color: #1a1a1a;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: #282828;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+.panel-title {
+    font-size: 15px;
+    -unity-font-style: bold;
+    color: #ffffff;
+    margin-bottom: 14px;
+}
+
+.input-field {
+    margin-bottom: 12px;
+}
+
+.input-field > Label {
+    color: #aaaaaa;
+    min-width: 100px;
+    font-size: 12px;
+}
+
+.btn-primary {
+    background-color: #b30e25;
+    color: #ffffff;
+    border-width: 0;
+    border-radius: 4px;
+    padding: 8px 18px;
+    font-size: 13px;
+    -unity-font-style: bold;
+}
+
+.btn-primary:hover {
+    background-color: #d61833;
+}
+
+.btn-secondary {
+    background-color: #262626;
+    color: #dddddd;
+    border-width: 1px;
+    border-color: #3a3a3a;
+    border-radius: 4px;
+    padding: 6px 14px;
+    font-size: 12px;
+}
+
+.btn-secondary:hover {
+    background-color: #363636;
+}
+
+.message-success {
+    color: #a5d6a7;
+    background-color: #1b3d22;
+    border-color: #2e7d32;
+    border-width: 1px;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 13px;
+    margin-top: 10px;
+    white-space: normal;
+}
+
+.message-error {
+    color: #ef9a9a;
+    background-color: #4c1d1d;
+    border-color: #c62828;
+    border-width: 1px;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 13px;
+    margin-top: 10px;
+    white-space: normal;
+}
+
+/* User Card */
+.user-card {
+    flex-direction: row;
+    align-items: center;
+}
+
+.user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 18px;
+    background-color: #b30e25;
+    -unity-text-align: middle-center;
+    color: white;
+    font-size: 16px;
+    -unity-font-style: bold;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.user-info {
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.user-name {
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: #ffffff;
+}
+
+.user-role {
+    font-size: 11px;
+    color: #888888;
+}
+
+/* Settings fields alignment */
+.settings-field {
+    margin-bottom: 12px;
+}
+
+.settings-field > Label {
+    color: #aaaaaa;
+    font-size: 12px;
+    min-width: 160px;
+}
+
+.section-divider {
+    height: 1px;
+    background-color: #282828;
+    margin: 14px 0;
+}
+
+/* Help blocks styling */
+.help-block {
+    background-color: #161616;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: #242424;
+    padding: 14px;
+    margin-bottom: 12px;
+    white-space: normal;
+    color: #bbbbbb;
+    font-size: 12px;
+}
+
+.help-heading {
+    font-size: 13px;
+    -unity-font-style: bold;
+    color: #ffffff;
+    margin-bottom: 8px;
+}

@@ -1,0 +1,9 @@
+-- Runs when this object is grabbed 
+function OnGrab(hand)
+    print(self:GetName() .. " was grabbed by: " .. hand)
+end
+
+-- Runs when this object is released
+function OnRelease(hand)
+    print(self:GetName() .. " was released by: " .. hand)
+end

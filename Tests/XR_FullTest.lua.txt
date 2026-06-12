@@ -1,0 +1,266 @@
+-- ═══════════════════════════════════════════════════════════
+--  XR_FullTest.lua — Full XR API Test Script
+--  Attach to: Any 3D object (Cube, Sphere, etc.)
+--  Components needed:
+--    • ScenarioBridge  (assign this file as luaScript)
+--    • LuaEngine       (auto-added via RequireComponent)
+--    • Collider         (auto-added by LuaEngine/XRLuaBridge)
+--    • XRSimpleInteractable (auto-added by LuaEngine/XRLuaBridge)
+--
+--  XR Scene requires:
+--    • XR Origin (XR Rig)  with two hand controllers
+--    • XR Interaction Manager
+--    • XR Ray Interactor or XR Direct Interactor on each hand
+--
+--  Watch the Unity Console for [Lua:ObjectName] messages.
+-- ═══════════════════════════════════════════════════════════
+
+-- ────────────────────────── STATE ──────────────────────────
+local testLog = {}           -- keeps a log of every event
+local isGrabbed = false
+local grabHand = "None"
+local isHovered = false
+local hoverHand = "None"
+local grabCount = 0
+local releaseCount = 0
+local hoverEnterCount = 0
+local hoverExitCount = 0
+local activateCount = 0
+local interactCount = 0
+
+-- saved transforms for reset
+local originalPos = nil
+local originalRot = nil
+local originalScale = nil
+local originalColor = { r = 1, g = 1, b = 1, a = 1 }
+
+-- color palette
+local COLOR_IDLE      = { 1.0, 1.0, 1.0, 1.0 }   -- white
+local COLOR_HOVER     = { 1.0, 1.0, 0.0, 1.0 }   -- yellow
+local COLOR_GRAB      = { 0.0, 1.0, 0.0, 1.0 }   -- green
+local COLOR_ACTIVATE  = { 1.0, 0.0, 0.0, 1.0 }   -- red
+local COLOR_RELEASED  = { 0.3, 0.6, 1.0, 1.0 }   -- light blue
+
+-- helper: apply a color table
+local function applyColor(c)
+    self:SetColor(c[1], c[2], c[3], c[4])
+end
+
+-- helper: log and remember
+local function record(tag, msg)
+    local entry = string.format("[%.2f] %s: %s", time(), tag, msg)
+    table.insert(testLog, entry)
+    self:Log(entry)
+end
+
+-- ──────────────────── LIFECYCLE: OnStart ───────────────────
+function OnStart()
+    -- Save original transforms
+    originalPos   = self:GetPosition()
+    originalRot   = self:GetRotation()
+    originalScale = self:GetScale()
+
+    record("INIT", "XR Full Test started on '" .. self:GetName() .. "'")
+    record("INIT", string.format("Position: (%.1f, %.1f, %.1f)",
+        originalPos.x, originalPos.y, originalPos.z))
+    record("INIT", string.format("Rotation: (%.1f, %.1f, %.1f)",
+        originalRot.x, originalRot.y, originalRot.z))
+    record("INIT", string.format("Scale:    (%.1f, %.1f, %.1f)",
+        originalScale.x, originalScale.y, originalScale.z))
+
+    applyColor(COLOR_IDLE)
+
+    -- Start the status reporter coroutine (prints summary every 10s)
+    StartCoroutine(StatusReporter)
+
+    -- Start a gentle idle animation so you can see the object is alive
+    StartCoroutine(IdlePulse)
+end
+
+-- ──────────────────── LIFECYCLE: OnUpdate ──────────────────
+function OnUpdate()
+    -- Slow spin while grabbed to show OnUpdate + OnGrab working together
+    if isGrabbed then
+        self:Rotate(0, 90 * deltaTime(), 0)
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════
+--  XR CALLBACKS (the main things we're testing)
+-- ═══════════════════════════════════════════════════════════
+
+-- ─────────────── TEST 1: OnHoverEnter ─────────────────────
+-- Trigger: Point a VR ray at the object / move hand close
+function OnHoverEnter(hand)
+    hoverEnterCount = hoverEnterCount + 1
+    isHovered = true
+    hoverHand = hand
+
+    record("OnHoverEnter", hand .. " (count: " .. hoverEnterCount .. ")")
+
+    -- Visual feedback: yellow highlight + slight scale up
+    if not isGrabbed then
+        applyColor(COLOR_HOVER)
+        local s = originalScale
+        self:SetScale(s.x * 1.1, s.y * 1.1, s.z * 1.1)
+    end
+end
+
+-- ─────────────── TEST 2: OnHoverExit ──────────────────────
+-- Trigger: Move the VR ray / hand away from the object
+function OnHoverExit(hand)
+    hoverExitCount = hoverExitCount + 1
+    isHovered = false
+    hoverHand = "None"
+
+    record("OnHoverExit", hand .. " (count: " .. hoverExitCount .. ")")
+
+    -- Reset visual if not grabbed
+    if not isGrabbed then
+        applyColor(COLOR_IDLE)
+        local s = originalScale
+        self:SetScale(s.x, s.y, s.z)
+    end
+end
+
+-- ─────────────── TEST 3: OnGrab (Select) ──────────────────
+-- Trigger: Press grip/trigger while pointing at the object
+function OnGrab(hand)
+    grabCount = grabCount + 1
+    isGrabbed = true
+    grabHand = hand
+
+    record("OnGrab", hand .. " (count: " .. grabCount .. ")")
+
+    -- Visual feedback: green + scale up more
+    applyColor(COLOR_GRAB)
+    local s = originalScale
+    self:SetScale(s.x * 1.3, s.y * 1.3, s.z * 1.3)
+
+    -- Test self:GetPosition while grabbed
+    local pos = self:GetPosition()
+    record("OnGrab", string.format("  Grabbed at pos (%.2f, %.2f, %.2f)", pos.x, pos.y, pos.z))
+end
+
+-- ─────────────── TEST 4: OnRelease ────────────────────────
+-- Trigger: Release grip/trigger
+function OnRelease(hand)
+    releaseCount = releaseCount + 1
+    isGrabbed = false
+    grabHand = "None"
+
+    record("OnRelease", hand .. " (count: " .. releaseCount .. ")")
+
+    -- Visual feedback: flash blue then reset
+    applyColor(COLOR_RELEASED)
+
+    -- Start a coroutine to animate back to idle
+    StartCoroutine(function()
+        coroutine.yield(wait(0.5))
+        if not isGrabbed and not isHovered then
+            applyColor(COLOR_IDLE)
+            local s = originalScale
+            self:SetScale(s.x, s.y, s.z)
+        end
+    end)
+
+    -- Test self:GetPosition after release
+    local pos = self:GetPosition()
+    record("OnRelease", string.format("  Released at pos (%.2f, %.2f, %.2f)", pos.x, pos.y, pos.z))
+end
+
+-- ─────────────── TEST 5: OnActivate ───────────────────────
+-- Trigger: Press the activate button while holding the object
+--          (e.g. squeeze trigger while grip is held, or A/X button)
+function OnActivate(hand)
+    activateCount = activateCount + 1
+
+    record("OnActivate", hand .. " (count: " .. activateCount .. ")")
+
+    -- Visual: flash red briefly
+    applyColor(COLOR_ACTIVATE)
+    StartCoroutine(function()
+        coroutine.yield(wait(0.3))
+        if isGrabbed then
+            applyColor(COLOR_GRAB)
+        elseif isHovered then
+            applyColor(COLOR_HOVER)
+        else
+            applyColor(COLOR_IDLE)
+        end
+    end)
+
+    -- Test: move the object up on each activate
+    local pos = self:GetPosition()
+    self:SetPosition(pos.x, pos.y + 0.2, pos.z)
+    record("OnActivate", string.format("  Moved up to y=%.2f", pos.y + 0.2))
+end
+
+-- ─────────────── TEST 6: OnInteract (backward compat) ─────
+-- This fires automatically with "VR:LeftHand" or "VR:RightHand"
+-- when OnGrab is triggered, plus "MouseClick" on desktop click.
+function OnInteract(userId)
+    interactCount = interactCount + 1
+    record("OnInteract", userId .. " (count: " .. interactCount .. ")")
+end
+
+-- ═══════════════════════════════════════════════════════════
+--  ADDITIONAL API TESTS (triggered by XR events above)
+-- ═══════════════════════════════════════════════════════════
+
+-- ─────────────── TEST 7: OnTriggerEnter / Exit ────────────
+-- Trigger: Another collider enters/exits this object's trigger zone
+-- (Requires: Collider with "Is Trigger" checked)
+function OnTriggerEnter(otherName)
+    record("OnTriggerEnter", "Object entered: " .. otherName)
+    applyColor({ 1, 0.5, 0, 1 })  -- orange flash
+end
+
+function OnTriggerExit(otherName)
+    record("OnTriggerExit", "Object exited: " .. otherName)
+    if not isGrabbed and not isHovered then
+        applyColor(COLOR_IDLE)
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════
+--  COROUTINES
+-- ═══════════════════════════════════════════════════════════
+
+-- Prints a full status summary every 10 seconds
+function StatusReporter()
+    while true do
+        coroutine.yield(wait(10.0))
+
+        self:Log("═══════ XR TEST STATUS REPORT ═══════")
+        self:Log("  Object:          " .. self:GetName())
+        self:Log("  Is Grabbed:      " .. tostring(isGrabbed) .. " (by " .. grabHand .. ")")
+        self:Log("  Is Hovered:      " .. tostring(isHovered) .. " (by " .. hoverHand .. ")")
+        self:Log("  Grab count:      " .. grabCount)
+        self:Log("  Release count:   " .. releaseCount)
+        self:Log("  HoverEnter:      " .. hoverEnterCount)
+        self:Log("  HoverExit:       " .. hoverExitCount)
+        self:Log("  Activate count:  " .. activateCount)
+        self:Log("  Interact count:  " .. interactCount)
+
+        local pos = self:GetPosition()
+        self:Log(string.format("  Position: (%.2f, %.2f, %.2f)", pos.x, pos.y, pos.z))
+
+        self:Log("  Total events:    " .. #testLog)
+        self:Log("═════════════════════════════════════")
+    end
+end
+
+-- Gentle scale pulse while idle (proves coroutines + mathf work)
+function IdlePulse()
+    while true do
+        if not isGrabbed and not isHovered then
+            local t = mathf.sin(time() * 2) * 0.05 + 1.0  -- oscillate 0.95 – 1.05
+            local s = originalScale
+            if s then
+                self:SetScale(s.x * t, s.y * t, s.z * t)
+            end
+        end
+        coroutine.yield(wait(0.05))  -- ~20 fps pulse update
+    end
+end

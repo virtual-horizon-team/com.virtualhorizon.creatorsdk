@@ -1,0 +1,22 @@
+{
+    "name": "CreatorSDK.Runtime",
+    "rootNamespace": "CreatorSDK",
+    "references": [
+        "Unity.XR.Interaction.Toolkit"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.xr.interaction.toolkit",
+            "expression": "",
+            "define": "XR_INTERACTION_TOOLKIT"
+        }
+    ],
+    "noEngineReferences": false
+}

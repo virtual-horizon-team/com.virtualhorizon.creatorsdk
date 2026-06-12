@@ -1,0 +1,111 @@
+-- ═══════════════════════════════════════════════════════════
+--  XR_ButtonMoveTest.lua — Press XR Button to Move Another Object
+--
+--  Setup:
+--    1. Create two 3D objects in your scene (e.g. "Button" and "Platform")
+--    2. On BOTH objects add: ScenarioBridge + LuaEngine
+--    3. Assign THIS script to the "Button" object's ScenarioBridge
+--    4. Assign any simple script (or a blank one) to "Platform"
+--    5. Make sure the object names match exactly: "Button" and "Platform"
+--
+--  How it works:
+--    • OnGrab   (grip button)  → moves "Platform" UP   by 0.5
+--    • OnRelease              →  moves "Platform" DOWN  by 0.5
+--    • OnActivate (trigger)   → toggles "Platform" UP / DOWN
+--    • OnHoverEnter/Exit      → changes button color for feedback
+--
+--  XR Scene requires:
+--    • XR Origin with hand controllers
+--    • XR Interaction Manager
+--    • XR Ray or Direct Interactor on each hand
+-- ═══════════════════════════════════════════════════════════
+
+-- ────────────── CONFIG ──────────────
+local TARGET_NAME   = "Platform"   -- << change this to your other object's name
+local MOVE_AMOUNT   = 0.5          -- how far to move up/down each time
+
+-- ────────────── STATE ───────────────
+local isToggled = false
+
+-- ────────────── COLORS ──────────────
+local COLOR_IDLE    = { 0.8, 0.2, 0.2, 1.0 }   -- red (button look)
+local COLOR_HOVER   = { 1.0, 0.6, 0.0, 1.0 }   -- orange
+local COLOR_PRESSED = { 0.0, 1.0, 0.0, 1.0 }   -- green
+
+-- helper
+local function applyColor(c)
+    self:SetColor(c[1], c[2], c[3], c[4])
+end
+
+-- ─────────────── OnStart ────────────
+function OnStart()
+    applyColor(COLOR_IDLE)
+    self:Log("Button ready! Grab or Activate to move '" .. TARGET_NAME .. "'")
+end
+
+-- ─────────────── HELPER: move target ─
+local function moveTarget(dy)
+    local target = self:FindObject(TARGET_NAME)
+    if target == nil then
+        self:Log("ERROR: Could not find object named '" .. TARGET_NAME .. "'")
+        self:Log("Make sure it has ScenarioBridge + LuaEngine attached!")
+        return
+    end
+
+    local pos = target:GetPosition()
+    target:SetPosition(pos.x, pos.y + dy, pos.z)
+    self:Log(string.format("Moved '%s' to y=%.2f", TARGET_NAME, pos.y + dy))
+end
+
+-- ─────────────── XR: OnGrab ─────────
+-- Pressing grip on the button → move platform UP
+function OnGrab(hand)
+    self:Log("Grabbed by " .. hand .. " → moving " .. TARGET_NAME .. " UP")
+    applyColor(COLOR_PRESSED)
+    moveTarget(MOVE_AMOUNT)
+end
+
+-- ─────────────── XR: OnRelease ──────
+-- Releasing grip → move platform DOWN
+function OnRelease(hand)
+    self:Log("Released by " .. hand .. " → moving " .. TARGET_NAME .. " DOWN")
+    applyColor(COLOR_HOVER)
+    moveTarget(-MOVE_AMOUNT)
+end
+
+-- ─────────────── XR: OnActivate ─────
+-- Activate button (trigger press while holding) → toggle up/down
+function OnActivate(hand)
+    isToggled = not isToggled
+    local direction = isToggled and MOVE_AMOUNT or -MOVE_AMOUNT
+    local label = isToggled and "UP" or "DOWN"
+
+    self:Log("Activated by " .. hand .. " → toggling " .. TARGET_NAME .. " " .. label)
+    moveTarget(direction)
+end
+
+-- ─────────────── XR: Hover feedback ─
+function OnHoverEnter(hand)
+    self:Log("Hover start: " .. hand)
+    applyColor(COLOR_HOVER)
+    -- slight scale up for visual feedback
+    local s = self:GetScale()
+    self:SetScale(s.x * 1.1, s.y * 1.1, s.z * 1.1)
+end
+
+function OnHoverExit(hand)
+    self:Log("Hover end: " .. hand)
+    applyColor(COLOR_IDLE)
+    -- reset scale
+    local s = self:GetScale()
+    self:SetScale(s.x / 1.1, s.y / 1.1, s.z / 1.1)
+end
+
+-- ─────────────── Desktop fallback ───
+-- OnInteract fires on mouse click too (userId = "MouseClick")
+function OnInteract(userId)
+    self:Log("Interact from " .. userId)
+    isToggled = not isToggled
+    local direction = isToggled and MOVE_AMOUNT or -MOVE_AMOUNT
+    moveTarget(direction)
+end

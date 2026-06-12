@@ -1,0 +1,17 @@
+-- ═══════════════════════════════════════════════════════════
+--  Platform.lua — Target object that gets moved by the Button
+--
+--  Setup:
+--    1. Attach to a GameObject named "Platform"
+--    2. Add ScenarioBridge + LuaEngine
+--    3. The Button script will find this by name and move it
+-- ═══════════════════════════════════════════════════════════
+
+function OnStart()
+    self:Log("Platform ready — waiting to be moved by Button")
+    self:SetColor(0.2, 0.5, 1.0, 1.0)  -- blue color
+end
+
+function OnUpdate()
+    -- nothing needed — the Button controls our position
+end
