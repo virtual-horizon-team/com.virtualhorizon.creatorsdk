@@ -162,7 +162,7 @@ namespace CreatorSDK.Editor.Services
 
                     // Skip textures that are already inside the temp folder
                     // (e.g. from a previous extraction step or user-provided)
-                    if (!string.IsNullOrEmpty(srcTexPath) && 
+                    if (!string.IsNullOrEmpty(srcTexPath) &&
                         (srcTexPath.StartsWith(materialsFolder) || srcTexPath.StartsWith(texturesFolder)))
                         continue;
 
@@ -226,79 +226,36 @@ namespace CreatorSDK.Editor.Services
         /// <summary>
         /// Extracts or copies a single material to the destination folder.
         /// </summary>
-        private static Material ExtractOrCopyMaterial(
-            Material srcMaterial,
-            string materialsFolder,
-            ExtractionResult result)
+        private static Material ExtractOrCopyMaterial(Material srcMaterial, string materialsFolder, ExtractionResult result)
         {
-            string srcPath = AssetDatabase.GetAssetPath(srcMaterial);
+            if (srcMaterial == null) return null;
+
             string safeName = SanitizeFileName(srcMaterial.name);
-            string destPath = $"{materialsFolder}/{Guid.NewGuid()}_{safeName}{MATERIAL_EXTENSION}";
+            string destPath = $"{materialsFolder}/{Guid.NewGuid()}_{safeName}.mat";
 
-            Material destMaterial = null;
-
+            // 1. إذا كانت المادة "Sub-Asset" (داخل موديل)، نستخدم ExtractAsset
             if (AssetDatabase.IsSubAsset(srcMaterial))
             {
                 string error = AssetDatabase.ExtractAsset(srcMaterial, destPath);
                 if (string.IsNullOrEmpty(error))
                 {
-                    destMaterial = AssetDatabase.LoadAssetAtPath<Material>(destPath);
-                    if (destMaterial != null) result.ExtractedMaterialCount++;
+                    result.ExtractedMaterialCount++;
+                    return AssetDatabase.LoadAssetAtPath<Material>(destPath);
                 }
             }
-            else if (!string.IsNullOrEmpty(srcPath) && srcPath.EndsWith(MATERIAL_EXTENSION))
+            // 2. إذا كانت مادة مستقلة، نستخدم CopyAsset (وهي الأضمن)
+            else if (AssetDatabase.CopyAsset(AssetDatabase.GetAssetPath(srcMaterial), destPath))
             {
-                if (AssetDatabase.CopyAsset(srcPath, destPath))
-                {
-                    destMaterial = AssetDatabase.LoadAssetAtPath<Material>(destPath);
-                    if (destMaterial != null) result.CopiedMaterialCount++;
-                }
+                AssetDatabase.Refresh(); // تحديث لضمان ظهور الملف
+                result.CopiedMaterialCount++;
+                return AssetDatabase.LoadAssetAtPath<Material>(destPath);
             }
 
-            // في حال فشل الاستخراج، نقوم بإنشاء المادة
-            if (destMaterial == null)
-            {
-                destMaterial = new Material(srcMaterial.shader);
-                destMaterial.name = srcMaterial.name;
-                AssetDatabase.CreateAsset(destMaterial, destPath);
-            }
-
-            // === الإصلاح الجذري ===
-            if (destMaterial != null && srcMaterial != null)
-            {
-                destMaterial.CopyPropertiesFromMaterial(srcMaterial);
-                float surface = destMaterial.HasProperty("_Surface") ? destMaterial.GetFloat("_Surface") : -1;
-                float zwrite  = destMaterial.HasProperty("_ZWrite")  ? destMaterial.GetFloat("_ZWrite")  : -1;
-                float alpha   = destMaterial.HasProperty("_AlphaClip") ? destMaterial.GetFloat("_AlphaClip") : -1;
-                float srcSurface = srcMaterial.HasProperty("_Surface") ? srcMaterial.GetFloat("_Surface") : -1;
-
-                FileLogger.Log($"[CreatorSDK] MAT '{srcMaterial.name}' | " +
-                        $"src_Surface:{srcSurface} → dest_Surface:{surface} | " +
-                        $"ZWrite:{zwrite} | AlphaClip:{alpha} | " +
-                        $"RenderQueue:{destMaterial.renderQueue} | " +
-                        $"Shader:{destMaterial.shader.name}");
-                
-                // Legacy keywords
-                destMaterial.shaderKeywords = srcMaterial.shaderKeywords;
-                
-                // ✅ NEW: Local keywords (URP/HDRP Unity 6)
-                foreach (var keyword in srcMaterial.shader.keywordSpace.keywords)
-                {
-                    if (srcMaterial.IsKeywordEnabled(keyword))
-                        destMaterial.EnableKeyword(keyword);
-                    else
-                        destMaterial.DisableKeyword(keyword);
-                }
-                
-                destMaterial.renderQueue = srcMaterial.renderQueue;
-                destMaterial.enableInstancing = srcMaterial.enableInstancing;
-                destMaterial.globalIlluminationFlags = srcMaterial.globalIlluminationFlags;
-                destMaterial.doubleSidedGI = srcMaterial.doubleSidedGI;
-                
-                EditorUtility.SetDirty(destMaterial);
-                AssetDatabase.SaveAssets();
-            }
-
+            // 3. الحل البديل (Fallback): إذا فشل كل شيء، نصنع نسخة جديدة
+            Material destMaterial = new Material(srcMaterial); // الـ Constructor ده بينسخ الخصائص تلقائياً
+            destMaterial.shaderKeywords = srcMaterial.shaderKeywords; // نسخ الكلمات المفتاحية
+            AssetDatabase.CreateAsset(destMaterial, destPath);
+            result.ExtractedMaterialCount++;
             return destMaterial;
         }
 

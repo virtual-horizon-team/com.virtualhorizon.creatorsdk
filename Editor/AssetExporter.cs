@@ -210,12 +210,12 @@ namespace CreatorSDK.Editor
                         WriteShaderNameToMatFile(matPath, kvp.Key.shader?.name, projectRoot);
                 }
 
-                string fixerScriptPath = InjectShaderFixer(tempFolder, assetGuid, projectRoot);
-                if (!string.IsNullOrEmpty(fixerScriptPath))
-                {
-                    assetsToExport.Add(fixerScriptPath);
-                    FileLogger.Log($"Shader fixer injected: {fixerScriptPath}");
-                }
+                // string fixerScriptPath = InjectShaderFixer(tempFolder, assetGuid, projectRoot);
+                // if (!string.IsNullOrEmpty(fixerScriptPath))
+                // {
+                //     assetsToExport.Add(fixerScriptPath);
+                //     FileLogger.Log($"Shader fixer injected: {fixerScriptPath}");
+                // }
 
                 // ── 10. Final sanity check & package export ────────────────
                 FileLogger.Log("Step 10: Final sanity check and package export");
@@ -586,9 +586,8 @@ namespace CreatorSDK.Editor
                         assetsToExport.Add(p);
                         continue;
                     }
-
-                    if (p.StartsWith("Assets/") &&
-                        (p.EndsWith(".shader") || p.EndsWith(".shadergraph")))
+                    // obj is Shader && !string.IsNullOrEmpty(p) && p.StartsWith("Assets/")
+                    if (obj is Shader)
                     {
                         extraShaderPaths.Add(p);
                     }

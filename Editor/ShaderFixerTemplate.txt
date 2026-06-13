@@ -2,6 +2,7 @@
 using System.IO;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace CreatorSDK.Import
 {
@@ -58,21 +59,31 @@ namespace CreatorSDK.Import
                     if (mat.HasProperty("_Surface"))
                     {
                         float surface = mat.GetFloat("_Surface");
+                        float alphaClip = mat.HasProperty("_AlphaClip") ? mat.GetFloat("_AlphaClip") : 0f;
+
                         if (surface > 0.5f) // Transparent
                         {
-                            mat.SetFloat("_Surface", 1);
-                            mat.SetFloat("_ZWrite", 0);
-                            mat.SetFloat("_AlphaClip", 0);
-                            mat.renderQueue = 3000; // Transparent
                             mat.SetOverrideTag("RenderType", "Transparent");
+                            mat.renderQueue = (int)RenderQueue.Transparent;
+                            mat.SetFloat("_ZWrite", 0);
+                            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                            mat.DisableKeyword("_ALPHATEST_ON");
+                        }
+                        else if (alphaClip > 0.5f) // Cutout / Masked
+                        {
+                            mat.SetOverrideTag("RenderType", "TransparentCutout");
+                            mat.renderQueue = (int)RenderQueue.AlphaTest;
+                            mat.SetFloat("_ZWrite", 1);
+                            mat.EnableKeyword("_ALPHATEST_ON");
+                            mat.EnableKeyword("_SURFACE_TYPE_OPAQUE"); // Cutout is technically Opaque in URP pipeline
                         }
                         else // Opaque
                         {
-                            mat.SetFloat("_Surface", 0);
-                            mat.SetFloat("_ZWrite", 1);
-                            mat.SetFloat("_AlphaClip", 0);
-                            mat.renderQueue = 2000; // Geometry
                             mat.SetOverrideTag("RenderType", "Opaque");
+                            mat.renderQueue = (int)RenderQueue.Geometry;
+                            mat.SetFloat("_ZWrite", 1);
+                            mat.DisableKeyword("_ALPHATEST_ON");
+                            mat.DisableKeyword("_SURFACE_TYPE_TRANSPARENT");
                         }
                     }
 
