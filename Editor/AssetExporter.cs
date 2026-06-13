@@ -400,13 +400,20 @@ namespace CreatorSDK.Editor
         {
             foreach (var rend in prefabInstance.GetComponentsInChildren<Renderer>(true))
             {
-                var mats = rend.sharedMaterials;
-                for (int i = 0; i < mats.Length; i++)
+                var originalMats = rend.sharedMaterials;
+                var newMats = new List<Material>();
+
+                for (int i = 0; i < originalMats.Length; i++)
                 {
-                    if (mats[i] != null && materialMap.TryGetValue(mats[i], out var extracted))
-                        mats[i] = extracted;
+                    if (originalMats[i] != null)
+                    {
+                        if (materialMap.TryGetValue(originalMats[i], out var extracted))
+                            newMats.Add(extracted);
+                        else
+                            newMats.Add(originalMats[i]);
+                    }
                 }
-                rend.sharedMaterials = mats;
+                rend.sharedMaterials = newMats.ToArray();
             }
         }
 
