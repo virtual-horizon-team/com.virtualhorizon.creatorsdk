@@ -11,10 +11,15 @@
    - [XR Lifecycle Callbacks](#xr-lifecycle-callbacks)
    - [self — Transform](#self--transform)
    - [self — Visual & Animation](#self--visual--animation)
+   - [self — Light](#self--light)
+   - [self — Audio](#self--audio)
+   - [self — Particles](#self--particles)
    - [self — Input](#self--input)
    - [self — Utility](#self--utility)
+   - [self — Hierarchy](#self--hierarchy)
    - [self — Inter-Object Communication](#self--inter-object-communication)
    - [self — Physics & Rigidbody](#self--physics--rigidbody)
+   - [self — XR API](#self--xr-api)
    - [Global Functions](#global-functions)
    - [Coroutines & Wait](#coroutines--wait)
    - [Math Library (mathf)](#math-library-mathf)
@@ -37,6 +42,39 @@ Every GameObject that needs scripted behavior gets two components:
 | **LuaEngine** | Creates a MoonSharp `Script` environment, exposes a safe API surface to Lua, executes the script, and dispatches Unity lifecycle events into Lua callbacks. |
 
 `LuaEngine` requires `ScenarioBridge` (enforced via `[RequireComponent]`).
+
+> **Script format:** Lua scripts must be saved as `.lua.txt` text assets (Unity requires the `.txt` extension for `TextAsset`). Assign the file to the `luaScript` field on `ScenarioBridge`.
+
+---
+
+## ⚡ Quick Start — Write Your First Script
+
+Create a file named `MyObject.lua.txt`. A script can be as simple as this:
+
+```lua
+-- Runs once when the scene starts
+function OnStart()
+    self:Log("Hello from " .. self:GetName())
+end
+
+-- Runs every frame
+function OnUpdate()
+    self:Rotate(0, 45 * deltaTime(), 0)   -- spin slowly
+end
+
+-- Runs when a player clicks or interacts
+function OnInteract(userId)
+    self:SetColor(0, 1, 0, 1)   -- turn green
+    self:Log(userId .. " interacted!")
+end
+```
+
+**Rules to remember:**
+- Always use `self:FunctionName(...)` — the colon `:` is required.
+- `deltaTime()` returns seconds since last frame — multiply speeds by it for frame-rate independence.
+- All color values are `0..1` (not `0..255`). Full opacity = alpha `1`.
+- You only need to define the callbacks you actually use — skip any you don't need.
+- `print(value)` and `self:Log(message)` both write to the Unity Console.
 
 ---
 
@@ -205,8 +243,10 @@ The `self` table represents the current GameObject.
 |---|---|---|
 | `self:SetPosition(x, y, z)` | `(float, float, float) → void` | Set world position |
 | `self:GetPosition()` | `() → {x, y, z}` | Get world position as a table |
-| `self:SetRotation(x, y, z)` | `(float, float, float) → void` | Set euler angles |
-| `self:GetRotation()` | `() → {x, y, z}` | Get euler angles as a table |
+| `self:SetLocalPosition(x, y, z)` | `(float, float, float) → void` | Set **local** position relative to parent |
+| `self:GetLocalPosition()` | `() → {x, y, z}` | Get local position as a table |
+| `self:SetRotation(x, y, z)` | `(float, float, float) → void` | Set world euler angles |
+| `self:GetRotation()` | `() → {x, y, z}` | Get world euler angles as a table |
 | `self:SetScale(x, y, z)` | `(float, float, float) → void` | Set local scale |
 | `self:GetScale()` | `() → {x, y, z}` | Get local scale as a table |
 | `self:Move(x, y, z)` | `(float, float, float) → void` | Translate in **local** space |
@@ -237,6 +277,22 @@ These functions operate on the **Light** component attached to the current GameO
 | `self:SetLightIntensity(intensity)` | `(float) → void` | Set light intensity (clamped to `>= 0`) |
 | `self:SetLightRange(range)` | `(float) → void` | Set light range (clamped to `>= 0`) |
 
+```lua
+-- Flicker a light between dim and bright
+function OnStart()
+    self:SetLightEnabled(true)
+    self:SetLightColor(1, 0.6, 0.1)   -- warm orange
+    StartCoroutine(Flicker)
+end
+
+function Flicker()
+    while true do
+        self:SetLightIntensity(mathf.random(0.5, 2.0))
+        coroutine.yield(wait(0.1))
+    end
+end
+```
+
 ---
 
 ### self — Audio
@@ -248,11 +304,24 @@ These functions operate on the **AudioSource** component attached to the current
 | `self:PlayAudio()` | `() → void` | Play attached AudioSource |
 | `self:PauseAudio()` | `() → void` | Pause attached AudioSource |
 | `self:StopAudio()` | `() → void` | Stop attached AudioSource |
+| `self:ToggleAudio(state)` | `(bool) → void` | `true` = Play, `false` = Stop. Convenience wrapper |
 | `self:SetAudioVolume(volume)` | `(float) → void` | Set volume (clamped to `0..1`) |
 | `self:SetAudioPitch(pitch)` | `(float) → void` | Set pitch (clamped to `-3..3`) |
 | `self:SetAudioLoop(bool)` | `(bool) → void` | Enable/disable looping |
 | `self:SetAudioMute(bool)` | `(bool) → void` | Mute/unmute |
 | `self:IsAudioPlaying()` | `() → bool` | Returns whether audio is currently playing |
+
+```lua
+-- Play audio on interact, stop it if already playing
+function OnInteract(userId)
+    if self:IsAudioPlaying() then
+        self:StopAudio()
+    else
+        self:SetAudioVolume(0.8)
+        self:PlayAudio()
+    end
+end
+```
 
 ---
 
@@ -300,6 +369,28 @@ Backward compatibility aliases (single particle, key = `default`):
 | `self:SetParticlesLoop(bool)` | `(bool) → void` | Alias to `SetParticleLoop("default", bool)` |
 | `self:IsParticlesPlaying()` | `() → bool` | Alias to `IsPlaying("default")` |
 
+```lua
+-- Play the default (first) particle on interact, stop it on next interact
+local playing = false
+
+function OnInteract(userId)
+    if playing then
+        self:StopParticles(true)   -- stop and clear
+        playing = false
+    else
+        self:PlayParticles()
+        playing = true
+    end
+end
+
+-- Named particle example (particle GameObject is named "Sparks")
+function OnStart()
+    self:PlayParticle("Sparks")
+end
+```
+
+---
+
 ### self — Input
 
 | Function | Signature | Description |
@@ -309,6 +400,7 @@ Backward compatibility aliases (single particle, key = `default`):
 | `self:GetKeyUp(keyName)` | `(string) → bool` | `true` on the frame the key is released |
 | `self:GetMouseButton(button)` | `(int) → bool` | `true` while mouse button is held (`0` = left, `1` = right, `2` = middle) |
 | `self:GetMouseButtonDown(button)` | `(int) → bool` | `true` on the frame the mouse button is pressed |
+| `self:GetMouseButtonUp(button)` | `(int) → bool` | `true` on the frame the mouse button is released |
 
 ---
 
@@ -318,7 +410,45 @@ Backward compatibility aliases (single particle, key = `default`):
 |---|---|---|
 | `self:Log(message)` | `(string) → void` | Print to Unity console prefixed with `[Lua:<ObjectName>]` |
 | `self:GetName()` | `() → string` | Return the GameObject's name |
-| `self:Destroy()` | `() → void` | Destroy the GameObject |
+| `self:SetActive(bool)` | `(bool) → void` | Show (`true`) or hide (`false`) the entire GameObject |
+| `self:SetText(text)` | `(string) → void` | Set the text of a **TextMeshPro** component on this object or its children |
+| `self:Destroy()` | `() → void` | Destroy this GameObject |
+
+> **Note:** `SetParent` and `ClearParent` are also listed here for convenience but are documented fully in [self — Hierarchy](#self--hierarchy).
+
+---
+
+### self — Hierarchy
+
+These functions let you navigate the GameObject hierarchy from Lua. `GetParent`, `GetChild`, and `GetChildren` return a **proxy `self` table** for the target object, so you can call any `self` function on the result.
+
+| Function | Signature | Description |
+|---|---|---|
+| `self:GetParent()` | `() → table \| nil` | Returns the parent GameObject's self table, or `nil` if none |
+| `self:GetChild(name)` | `(string) → table \| nil` | Returns a named direct child's self table, or `nil` if not found |
+| `self:GetChildren()` | `() → table[]` | Returns an array of self tables for all direct children |
+| `self:SetParent(parentName)` | `(string) → void` | Re-parent this object to a scene object found by name |
+| `self:ClearParent()` | `() → void` | Detach from parent (makes this a root object) |
+
+```lua
+-- Walk up to parent and log its name
+local parent = self:GetParent()
+if parent then
+    self:Log("My parent is: " .. parent:GetName())
+end
+
+-- Control a named child
+local barrel = self:GetChild("Barrel")
+if barrel then
+    barrel:SetActive(false)
+end
+
+-- Loop all children
+local kids = self:GetChildren()
+for i = 1, #kids do
+    kids[i]:SetColor(1, 0, 0, 1)
+end
+```
 
 ---
 
@@ -358,6 +488,45 @@ These functions operate on the **Rigidbody** component attached to the current G
 | `self:FreezeRotation(bool)` | `(bool) → void` | Freeze/unfreeze all rotation axes |
 
 > **Prerequisite:** The GameObject must have a **Rigidbody** component. Add one in Unity's Inspector before using these functions.
+
+---
+
+### self — XR API
+
+> ⚠️ These functions are only available when the **XR Interaction Toolkit** package is installed (`com.unity.xr.interaction.toolkit`). They silently compile away on non-XR builds.
+
+| Function | Signature | Description |
+|---|---|---|
+| `self:SetGrabbable(state)` | `(bool) → void` | Enable (`true`) or disable (`false`) the `XRGrabInteractable` component. Requires `XRGrabInteractable` on the object. |
+| `self:TriggerHaptic(amplitude, duration)` | `(float, float) → void` | Send a haptic impulse to all XR controllers currently holding this object. `amplitude` is 0–1, `duration` is seconds. Requires `XRGrabInteractable`. |
+| `self:ToggleAudio(state)` | `(bool) → void` | `true` calls `AudioSource.Play()`, `false` calls `AudioSource.Stop()`. Requires `AudioSource`. |
+
+```lua
+-- Example: Haptic feedback + disable grabbing after first use
+function OnGrab(hand)
+    self:Log("Grabbed by " .. hand)
+    self:TriggerHaptic(0.8, 0.2)   -- amplitude 0..1, duration in seconds
+    self:SetGrabbable(false)        -- prevent grabbing again
+end
+
+-- Example: Toggle audio on grab / release
+function OnGrab(hand)
+    self:ToggleAudio(true)    -- start playing when picked up
+end
+
+function OnRelease(hand)
+    self:ToggleAudio(false)   -- stop when dropped
+end
+
+-- Example: Re-enable grabbing after 3 seconds
+function OnGrab(hand)
+    self:SetGrabbable(false)
+    StartCoroutine(function()
+        coroutine.yield(wait(3.0))
+        self:SetGrabbable(true)
+    end)
+end
+```
 
 ---
 
@@ -775,7 +944,13 @@ With the current `LuaEngine` API you can build:
 | **Game Logic** | Score counters, click trackers, timers, state machines (via Lua variables) |
 | **Input-Driven Gameplay** | Keyboard/mouse controlled characters, aiming, directional movement |
 | **Math-Driven Effects** | Sine/cosine wave motion, lerp-based smooth transitions, clamped values |
-| **VR / XR Interactions** | Grabbable objects, hover highlights, trigger-activated tools, two-handed interactions |
+| **VR / XR Interactions** | Grabbable objects, hover highlights, trigger-activated tools, haptic feedback, two-handed interactions |
+| **XR Grab Control** | Lock/unlock grabbing at runtime (`SetGrabbable`), haptic impulses on interact (`TriggerHaptic`) |
+| **Audio** | Play/stop/toggle background music or SFX, volume/pitch control, looping audio |
+| **Lighting** | Dynamic light color changes, flicker effects, on/off toggling, intensity pulsing |
+| **Particle Effects** | Trigger bursts, looping VFX, grouped particle systems, stop-and-clear on event |
+| **Hierarchy Traversal** | Control child objects from a parent script, propagate state to all children |
+| **Text Display** | Update TMP labels in-world (score, status, name tags) |
 | **Physics & Rigidbody** | Force-driven movement, jumping, knockback, explosions, velocity control, kinematic toggling |
 | **Raycasting & Detection** | Ground checks, line-of-sight, distance sensing, sphere overlap queries |
 | **Gravity Control** | Zero-gravity zones, modified gravity for gameplay effects |
@@ -787,16 +962,18 @@ With the current `LuaEngine` API you can build:
 | Limitation | Reason |
 |---|---|
 | **No `require` / `os` / `io`** | Sandboxed — forbidden calls are validated at export time |
-| **Rigidbody must be added manually** | Physics functions (`AddForce`, `SetVelocity`, etc.) require a Rigidbody component on the GameObject |
-| **XR requires XR Interaction Toolkit** | XR callbacks only work when the `com.unity.xr.interaction.toolkit` package is installed |
-| **No Audio API** | No `PlaySound()` or audio source control |
-| **No UI API** | Cannot create or modify UI elements from Lua |
+| **Rigidbody must be added manually** | Physics functions (`AddForce`, `SetVelocity`, etc.) require a `Rigidbody` component on the GameObject |
+| **XR requires XR Interaction Toolkit** | XR callbacks and `SetGrabbable`/`TriggerHaptic` only work when `com.unity.xr.interaction.toolkit` is installed |
+| **AudioSource must be added manually** | Audio functions require an `AudioSource` component on the GameObject |
+| **Light must be added manually** | Light functions require a `Light` component on the GameObject |
+| **No UI API** | Cannot create or modify Canvas/UI elements from Lua |
 | **No Instantiate / Spawn** | Cannot create new GameObjects at runtime |
 | **No direct C# type access** | MoonSharp is configured for sandboxed mode only |
-| **`FindObject` by name only** | Objects must have unique names; collisions use last-registered |
+| **`FindObject` by name only** | Objects must have unique names; name collisions use the last-registered instance |
 | **`OnUpdate` has no deltaTime arg** | Must call `deltaTime()` globally instead |
-| **No network / multiplayer API** | Cannot send messages to other players |
+| **No network / multiplayer API** | Cannot send messages to other players or call network methods |
 | **Single `TextAsset` per object** | Each `ScenarioBridge` holds one Lua script |
+| **`SetColor` takes 4 args (r,g,b,a)** | Alpha is required — use `1` to keep full opacity: `self:SetColor(1, 0, 0, 1)` |
 
 ---
 

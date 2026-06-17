@@ -3,7 +3,7 @@ using MoonSharp.Interpreter;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-
+using TMPro;
 #if XR_INTERACTION_TOOLKIT
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
@@ -837,6 +837,10 @@ namespace CreatorSDK
                 {
                     renderer.material.color = new Color(r, g, b, a);
                 }
+                else
+                {
+                    Debug.LogWarning($"[LuaEngine] SetColor: No Renderer on {gameObject.name}");
+                }
             });
 
             selfTable["SetActive"] = (Action<bool>)((active) =>
@@ -1269,6 +1273,19 @@ namespace CreatorSDK
                 return childrenTable;
             });
 
+            selfTable["SetText"] = (Action<string>)((text) =>
+            {
+                var textComponent = GetComponentInChildren<TextMeshPro>();
+                if (textComponent != null)
+                {
+                    textComponent.text = text;
+                }
+                else
+                {
+                    Debug.LogWarning($"[LuaEngine] SetText: No TextMeshPro component found in children of {gameObject.name}");
+                }
+            });
+
             // ===== GLOBAL FUNCTIONS =====
 
             // Time
@@ -1374,6 +1391,63 @@ namespace CreatorSDK
             physics["CheckSphere"] = (Func<float, float, float, float, bool>)((x, y, z, radius) =>
             {
                 return Physics.CheckSphere(new Vector3(x, y, z), radius);
+            });
+
+            // ===== REQUIRED APIS =====
+#if XR_INTERACTION_TOOLKIT
+            selfTable["SetGrabbable"] = (Action<bool>)((state) =>
+            {
+                var grabInteractable = GetComponent<XRGrabInteractable>();
+                if (grabInteractable != null)
+                {
+                    grabInteractable.enabled = state;
+                }
+                else
+                {
+                    Debug.LogWarning($"[LuaEngine] SetGrabbable: Component missing on {gameObject.name}");
+                }
+            });
+
+            selfTable["TriggerHaptic"] = (Action<float, float>)((amplitude, duration) =>
+            {
+                var grabInteractable = GetComponent<XRGrabInteractable>();
+                if (grabInteractable != null)
+                {
+                    if (grabInteractable.interactorsSelecting != null)
+                    {
+                        foreach (var interactor in grabInteractable.interactorsSelecting)
+                        {
+                            if (interactor is XRBaseInputInteractor controllerInteractor)
+                            {
+                                controllerInteractor.SendHapticImpulse(amplitude, duration);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning($"[LuaEngine] TriggerHaptic: Component missing on {gameObject.name}");
+                }
+            });
+#endif
+            selfTable["ToggleAudio"] = (Action<bool>)((state) =>
+            {
+                var audioSource = GetComponent<AudioSource>();
+                if (audioSource != null)
+                {
+                    if (state)
+                    {
+                        audioSource.Play();
+                    }
+                    else
+                    {
+                        audioSource.Stop();
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning($"[LuaEngine] ToggleAudio: Component missing on {gameObject.name}");
+                }
             });
         }
 
