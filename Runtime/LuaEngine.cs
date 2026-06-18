@@ -103,6 +103,7 @@ namespace CreatorSDK
         private DynValue onHoverEnterFunc;
         private DynValue onHoverExitFunc;
         private DynValue onActivateFunc;
+        private DynValue onDeactivateFunc;
         private DynValue onSnapFunc;
         private DynValue onUnsnapFunc;
 
@@ -667,6 +668,7 @@ namespace CreatorSDK
                 xrInteractable.hoverEntered.AddListener(OnXRHoverEntered);
                 xrInteractable.hoverExited.AddListener(OnXRHoverExited);
                 xrInteractable.activated.AddListener(OnXRActivated);
+                xrInteractable.deactivated.AddListener(OnXRDeactivated);
             }
 
             Debug.Log($"[LuaEngine] ✓ XR enabled on {gameObject.name}");
@@ -684,6 +686,7 @@ namespace CreatorSDK
                 xrInteractable.hoverEntered.RemoveListener(OnXRHoverEntered);
                 xrInteractable.hoverExited.RemoveListener(OnXRHoverExited);
                 xrInteractable.activated.RemoveListener(OnXRActivated);
+                xrInteractable.deactivated.RemoveListener(OnXRDeactivated);
             }
 
             if (xrInteractor != null)
@@ -731,6 +734,7 @@ namespace CreatorSDK
                 onHoverEnterFunc = luaScript.Globals.Get("OnHoverEnter");
                 onHoverExitFunc = luaScript.Globals.Get("OnHoverExit");
                 onActivateFunc = luaScript.Globals.Get("OnActivate");
+                onDeactivateFunc = luaScript.Globals.Get("OnDeactivate");
                 onSnapFunc = luaScript.Globals.Get("OnSnap");
                 onUnsnapFunc = luaScript.Globals.Get("OnUnsnap");
 
@@ -1708,6 +1712,12 @@ namespace CreatorSDK
             CallLuaCallback("OnActivate", hand);
         }
 
+        private void OnXRDeactivated(DeactivateEventArgs args)
+        {
+            string hand = GetXRInteractorName(args.interactorObject);
+            CallLuaCallback("OnDeactivate", hand);
+        }
+
         private string GetXRInteractorName(IXRInteractor interactor)
         {
             if (interactor is MonoBehaviour mb)
@@ -1735,6 +1745,7 @@ namespace CreatorSDK
                 "OnHoverEnter" => onHoverEnterFunc,
                 "OnHoverExit" => onHoverExitFunc,
                 "OnActivate" => onActivateFunc,
+                "OnDeactivate" => onDeactivateFunc,
                 "OnSnap" => onSnapFunc,
                 "OnUnsnap" => onUnsnapFunc,
                 _ => luaScript.Globals.Get(callbackName)

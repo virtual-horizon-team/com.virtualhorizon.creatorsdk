@@ -1,3 +1,147 @@
-function OnActivate(source)
-    self:Log("Activated by " .. source)
+-- DoorOpen.lua
+-- Attach this script to the Keyhole snap zone.
+-- When the key is snapped into the keyhole, it first rotates the keyhole itself (self)
+-- which automatically rotates the snapped key, and then opens the door slowly.
+
+local KEY_ROTATE_AXIS     = "Z"     -- axis the keyhole rotates on ("X", "Y", or "Z")
+local KEY_ROTATE_ANGLE    = 90.0    -- degrees key rotates to unlock (e.g. 90)
+local KEY_ROTATE_DURATION = 1.0     -- seconds the key rotation takes
+
+local DOOR_ROTATE_AXIS    = "Z"     -- axis the door rotates on ("X", "Y", or "Z")
+local DOOR_OPEN_ANGLE     = -120.0  -- degrees to rotate door (adjust as needed)
+local DOOR_OPEN_DURATION  = 3.0     -- seconds the door opening takes
+
+local animState = "idle"            -- "idle", "key", "door", "done"
+local doorObj = nil
+
+local keyRotated = 0.0
+local keyRotPerSec = KEY_ROTATE_ANGLE / KEY_ROTATE_DURATION
+
+local doorRotated = 0.0
+local doorRotPerSec = DOOR_OPEN_ANGLE / DOOR_OPEN_DURATION
+
+-- Helper to rotate the keyhole (self) on a specific axis
+local function rotateKeyhole(axis, angle)
+    if axis == "X" or axis == "x" then
+        self.Rotate(angle, 0, 0)
+    elseif axis == "Y" or axis == "y" then
+        self.Rotate(0, angle, 0)
+    else
+        self.Rotate(0, 0, angle)
+    end
+end
+
+-- Helper to rotate the door object on a specific axis
+local function rotateDoor(obj, axis, angle)
+    if obj and type(obj.Rotate) == "function" then
+        if axis == "X" or axis == "x" then
+            obj.Rotate(angle, 0, 0)
+        elseif axis == "Y" or axis == "y" then
+            obj.Rotate(0, angle, 0)
+        else
+            obj.Rotate(0, 0, angle)
+        end
+    end
+end
+
+function OnStart()
+    doorObj = self.FindObject("FEB Door")
+    if doorObj == nil then
+        doorObj = self:FindObject("FEB Door")
+    end
+
+    if doorObj == nil then
+        self:Log("[DoorOpen] WARNING: Could not find 'FEB Door' in the scene.")
+    else
+        self:Log("[DoorOpen] Ready. FEB Door found.")
+    end
+end
+
+function OnSnap(grabbedObjectName)
+    self:Log("[DoorOpen] Key snapped: " .. tostring(grabbedObjectName))
+
+    doorObj = self.FindObject("FEB Door")
+    if doorObj == nil then
+        doorObj = self:FindObject("FEB Door")
+    end
+
+    if doorObj == nil then
+        self:Log("[DoorOpen] ERROR: 'FEB Door' not found. Cannot open door.")
+        return
+    end
+
+    -- Start the sequence: First keyhole rotation, then door opening
+    animState = "key"
+    keyRotated = 0.0
+    doorRotated = 0.0
+end
+
+function OnUnsnap(grabbedObjectName)
+    self:Log("[DoorOpen] Key unsnapped: " .. tostring(grabbedObjectName))
+    -- Reset state if key is pulled out
+    animState = "idle"
+end
+
+function OnUpdate()
+    if animState == "idle" or animState == "done" then return end
+
+    local dt = deltaTime()
+
+    if animState == "key" then
+        local step = keyRotPerSec * dt
+        local remaining = KEY_ROTATE_ANGLE - keyRotated
+
+        local isOver = false
+        if KEY_ROTATE_ANGLE >= 0 then
+            if step >= remaining then
+                step = remaining
+                isOver = true
+            end
+        else
+            if step <= remaining then
+                step = remaining
+                isOver = true
+            end
+        end
+
+        -- Rotate keyhole (self). The snapped key will rotate with it.
+        rotateKeyhole(KEY_ROTATE_AXIS, step)
+        keyRotated = keyRotated + step
+
+        if isOver then
+            self:Log("[DoorOpen] Key unlocked. Now opening door...")
+            animState = "door"
+        end
+
+    elseif animState == "door" then
+        if doorObj == nil then
+            animState = "idle"
+            return
+        end
+
+        local step = doorRotPerSec * dt
+        local remaining = DOOR_OPEN_ANGLE - doorRotated
+
+        local isOver = false
+        if DOOR_OPEN_ANGLE >= 0 then
+            if step >= remaining then
+                step = remaining
+                isOver = true
+            end
+        else
+            if step <= remaining then
+                step = remaining
+                isOver = true
+            end
+        end
+
+        -- Rotate door
+        rotateDoor(doorObj, DOOR_ROTATE_AXIS, step)
+        doorRotated = doorRotated + step
+
+        if isOver then
+            self:Log("[DoorOpen] Door fully opened.")
+            animState = "done"
+        end
+    end
 end

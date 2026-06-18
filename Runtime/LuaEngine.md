@@ -129,6 +129,7 @@ All `LuaEngine` instances register themselves in a **static dictionary** keyed b
 | XR Hover Entered | `OnHoverEnter(hand)` | `"LeftHand"` / `"RightHand"` |
 | XR Hover Exited | `OnHoverExit(hand)` | `"LeftHand"` / `"RightHand"` |
 | XR Activated | `OnActivate(hand)` | `"LeftHand"` / `"RightHand"` |
+| XR Deactivated | `OnDeactivate(hand)` | `"LeftHand"` / `"RightHand"` |
 
 > **Note:** `OnUpdate()` receives **no argument** in this version. Use the global `deltaTime()` function instead.
 >
@@ -164,6 +165,7 @@ XR Controller → XRBaseInteractable → LuaEngine → Lua Callback
 | Hover Entered | `OnHoverEnter(hand)` | Highlight on gaze/point |
 | Hover Exited | `OnHoverExit(hand)` | Remove highlight |
 | Activated (trigger press) | `OnActivate(hand)` | Fire, use, activate while holding |
+| Deactivated (trigger release) | `OnDeactivate(hand)` | Stop firing, release trigger |
 
 ---
 
@@ -226,6 +228,11 @@ end
 function OnActivate(hand)
     -- Runs when the trigger button is pressed while holding this object
     self:Log("Activated by " .. hand)
+end
+
+function OnDeactivate(hand)
+    -- Runs when the trigger button is released while holding this object
+    self:Log("Deactivated by " .. hand)
 end
 ```
 
@@ -874,6 +881,11 @@ function OnActivate(hand)
         wait(0.3)
         self:SetColor(0, 1, 0, 1)
     end)
+end
+
+function OnDeactivate(hand)
+    self:Log("Trigger released by " .. hand)
+    self:SetColor(1, 1, 1, 1)   -- reset color
 end
 ```
 
