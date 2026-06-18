@@ -709,6 +709,12 @@ namespace CreatorSDK
                 // Register all Unity API bindings
                 RegisterAPI();
 
+                luaScript.DoString(@"
+                    function wait(seconds)
+                        coroutine.yield(seconds)
+                    end
+                ");
+
                 // Execute the Lua script
                 luaScript.DoString(bridge.luaScript.text);
 
@@ -1030,6 +1036,36 @@ namespace CreatorSDK
                 {
                     animator.Play(animName);
                 }
+                else
+                {
+                    Debug.LogWarning($"[LuaEngine] PlayAnimation: No Animator on {gameObject.name}");
+                }
+            });
+
+            selfTable["SetAnimationBool"] = (Action<string, bool>)((paramName, state) =>
+            {
+                Animator animator = GetComponent<Animator>();
+                if (animator != null)
+                {
+                    animator.SetBool(paramName, state);
+                }
+                else
+                {
+                    Debug.LogWarning($"[LuaEngine] SetAnimationBool: No Animator on {gameObject.name}");
+                }
+            });
+
+            selfTable["SetAnimationTrigger"] = (Action<string>)((paramName) =>
+            {
+                Animator animator = GetComponent<Animator>();
+                if (animator != null)
+                {
+                    animator.SetTrigger(paramName);
+                }
+                else
+                {
+                    Debug.LogWarning($"[LuaEngine] SetAnimationTrigger: No Animator on {gameObject.name}");
+                }
             });
 
             // --- Utility Functions ---
@@ -1275,14 +1311,54 @@ namespace CreatorSDK
 
             selfTable["SetText"] = (Action<string>)((text) =>
             {
-                var textComponent = GetComponentInChildren<TextMeshPro>();
+                // TMP_Text covers both TextMeshPro (world-space) and TextMeshProUGUI (Canvas/UI)
+                var textComponent = GetComponentInChildren<TMP_Text>();
                 if (textComponent != null)
                 {
                     textComponent.text = text;
                 }
                 else
                 {
-                    Debug.LogWarning($"[LuaEngine] SetText: No TextMeshPro component found in children of {gameObject.name}");
+                    Debug.LogWarning($"[LuaEngine] SetText: No TextMeshPro/TextMeshProUGUI component found in children of {gameObject.name}");
+                }
+            });
+
+            selfTable["AppendText"] = (Action<string>)((text) =>
+            {
+                var textComponent = GetComponentInChildren<TMP_Text>();
+                if (textComponent != null)
+                {
+                    textComponent.text += "\n" + text;
+                }
+                else
+                {
+                    Debug.LogWarning($"[LuaEngine] AppendText: No TextMeshPro/TextMeshProUGUI component found in children of {gameObject.name}");
+                }
+            });
+
+            selfTable["ClearText"] = (Action)(() =>
+            {
+                var textComponent = GetComponentInChildren<TMP_Text>();
+                if (textComponent != null)
+                {
+                    textComponent.text = "";
+                }
+                else
+                {
+                    Debug.LogWarning($"[LuaEngine] ClearText: No TextMeshPro/TextMeshProUGUI component found in children of {gameObject.name}");
+                }
+            });
+
+            selfTable["SetTextColor"] = (Action<float, float, float, float>)((r, g, b, a) =>
+            {
+                var textComponent = GetComponentInChildren<TMP_Text>();
+                if (textComponent != null)
+                {
+                    textComponent.color = new Color(r, g, b, a);
+                }
+                else
+                {
+                    Debug.LogWarning($"[LuaEngine] SetTextColor: No TextMeshPro/TextMeshProUGUI component found in children of {gameObject.name}");
                 }
             });
 
@@ -1299,12 +1375,6 @@ namespace CreatorSDK
             });
 
             // ===== COROUTINE / WAIT SUPPORT =====
-            // wait(seconds) - yields the coroutine for specified seconds
-            luaScript.Globals["wait"] = (Func<float, DynValue>)((seconds) =>
-            {
-                return DynValue.NewYieldReq(new[] { DynValue.NewNumber(seconds) });
-            });
-
             // StartCoroutine - starts a Lua coroutine
             luaScript.Globals["StartCoroutine"] = (Action<DynValue>)((func) =>
             {
@@ -1476,7 +1546,7 @@ namespace CreatorSDK
                 if (info.isWaiting)
                 {
                     if (Time.time >= info.waitUntilTime)
-                    {
+        {
                         info.isWaiting = false;
                         ResumeCoroutine(info);
                     }
@@ -1484,7 +1554,7 @@ namespace CreatorSDK
 
                 // Remove completed coroutines
                 if (info.coroutine.Coroutine.State == CoroutineState.Dead)
-                {
+            {
                     activeCoroutines.RemoveAt(i);
                 }
             }
@@ -1492,8 +1562,8 @@ namespace CreatorSDK
 
         private void ResumeCoroutine(LuaCoroutineInfo info)
         {
-            try
-            {
+                try
+                {
                 DynValue result = info.coroutine.Coroutine.Resume();
 
                 // Check if coroutine yielded a wait value
@@ -1503,10 +1573,10 @@ namespace CreatorSDK
                     info.waitUntilTime = Time.time + waitSeconds;
                     info.isWaiting = true;
                 }
-            }
-            catch (ScriptRuntimeException ex)
-            {
-                Debug.LogError($"[LuaEngine] Coroutine error in {gameObject.name}: {ex.DecoratedMessage}");
+                }
+                catch (ScriptRuntimeException ex)
+                {
+                    Debug.LogError($"[LuaEngine] Coroutine error in {gameObject.name}: {ex.DecoratedMessage}");
                 // Mark as dead by removing from list
                 activeCoroutines.Remove(info);
             }

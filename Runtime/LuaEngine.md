@@ -260,9 +260,24 @@ The `self` table represents the current GameObject.
 
 | Function | Signature | Description |
 |---|---|---|
-| `self:SetColor(r, g, b, a)` | `(float, float, float, float) → void` | Set material color (0–1 range) |
+| `self:SetColor(r, g, b, a)` | `(float, float, float, float) → void` | Set material color (0–1 range, alpha required) |
 | `self:SetActive(bool)` | `(bool) → void` | Show/hide the entire GameObject |
 | `self:PlayAnimation(name)` | `(string) → void` | Play an Animator state by name |
+| `self:SetAnimationBool(param, value)` | `(string, bool) → void` | Set an Animator **Bool** parameter by name |
+| `self:SetAnimationTrigger(param)` | `(string) → void` | Fire an Animator **Trigger** parameter by name |
+
+```lua
+-- Play a state directly
+self:PlayAnimation("Run")
+
+-- Toggle a Bool parameter (e.g. IsOpen)
+self:SetAnimationBool("IsOpen", true)
+
+-- Fire a one-shot trigger (e.g. Jump)
+function OnInteract(userId)
+    self:SetAnimationTrigger("Jump")
+end
+```
 
 ---
 
@@ -288,7 +303,7 @@ end
 function Flicker()
     while true do
         self:SetLightIntensity(mathf.random(0.5, 2.0))
-        coroutine.yield(wait(0.1))
+        wait(0.1)
     end
 end
 ```
@@ -411,8 +426,33 @@ end
 | `self:Log(message)` | `(string) → void` | Print to Unity console prefixed with `[Lua:<ObjectName>]` |
 | `self:GetName()` | `() → string` | Return the GameObject's name |
 | `self:SetActive(bool)` | `(bool) → void` | Show (`true`) or hide (`false`) the entire GameObject |
-| `self:SetText(text)` | `(string) → void` | Set the text of a **TextMeshPro** component on this object or its children |
 | `self:Destroy()` | `() → void` | Destroy this GameObject |
+
+**Text (TextMeshPro)** — requires a `TextMeshPro` component on this object or a child:
+
+| Function | Signature | Description |
+|---|---|---|
+| `self:SetText(text)` | `(string) → void` | Replace the TMP text entirely |
+| `self:AppendText(text)` | `(string) → void` | Append a new line to the existing TMP text |
+| `self:ClearText()` | `() → void` | Clear the TMP text (set to empty string) |
+| `self:SetTextColor(r, g, b, a)` | `(float, float, float, float) → void` | Set the TMP text color (0–1 range) |
+
+```lua
+-- Build a log display
+function OnStart()
+    self:SetText("Log started")
+    self:SetTextColor(0, 1, 0, 1)   -- green text
+end
+
+function OnInteract(userId)
+    self:AppendText(userId .. " interacted")   -- adds a new line
+end
+
+-- Reset the display
+function OnTriggerExit(otherName)
+    self:ClearText()
+end
+```
 
 > **Note:** `SetParent` and `ClearParent` are also listed here for convenience but are documented fully in [self — Hierarchy](#self--hierarchy).
 
@@ -522,7 +562,7 @@ end
 function OnGrab(hand)
     self:SetGrabbable(false)
     StartCoroutine(function()
-        coroutine.yield(wait(3.0))
+        wait(3.0)
         self:SetGrabbable(true)
     end)
 end
@@ -538,7 +578,7 @@ end
 | `time()` | `() → float` | Returns `Time.time` (seconds since game start) |
 | `print(value)` | `(any) → void` | Print any value to the Unity console |
 | `StartCoroutine(func)` | `(function) → void` | Start a Lua coroutine (see below) |
-| `wait(seconds)` | `(float) → number` | Yield a coroutine for `seconds` seconds (only valid inside a coroutine) |
+| `wait(seconds)` | `(float) → void` | Yield/pause the coroutine execution for `seconds` seconds (only valid inside a coroutine) |
 
 ---
 
@@ -553,11 +593,11 @@ end
 
 function MySequence()
     self:Log("Step 1")
-    coroutine.yield(wait(2.0))   -- pause for 2 seconds
+    wait(2.0)   -- pause for 2 seconds
 
     self:Log("Step 2")
     self:SetColor(1, 0, 0, 1)
-    coroutine.yield(wait(1.5))   -- pause for 1.5 seconds
+    wait(1.5)   -- pause for 1.5 seconds
 
     self:Log("Step 3")
     self:SetColor(0, 1, 0, 1)
@@ -565,10 +605,11 @@ end
 ```
 
 **How it works internally:**
-1. `StartCoroutine(func)` wraps `func` in a MoonSharp coroutine and resumes it immediately until the first `yield`.
-2. When the coroutine yields a number (from `wait(n)`), the engine stores a `waitUntilTime = Time.time + n`.
-3. Each `Update()`, the engine checks if `Time.time >= waitUntilTime` and resumes the coroutine.
-4. When the coroutine finishes (state = `Dead`), it is automatically removed.
+1. `StartCoroutine(func)` wraps `func` in a MoonSharp coroutine and resumes it immediately until the first yield/pause.
+2. The global `wait(seconds)` function executes `coroutine.yield(seconds)`.
+3. When the coroutine yields a number, the C# engine captures it and stores a `waitUntilTime = Time.time + seconds`.
+4. Each `Update()`, the C# engine checks if the timer has passed and resumes the coroutine.
+5. When the coroutine finishes (state = `Dead`), it is automatically cleaned up.
 
 ---
 
@@ -712,13 +753,13 @@ end
 function LightShow()
     while true do
         self:SetColor(1, 0, 0, 1)     -- Red
-        coroutine.yield(wait(1.0))
+        wait(1.0)
 
         self:SetColor(0, 1, 0, 1)     -- Green
-        coroutine.yield(wait(1.0))
+        wait(1.0)
 
         self:SetColor(0, 0, 1, 1)     -- Blue
-        coroutine.yield(wait(1.0))
+        wait(1.0)
     end
 end
 ```
@@ -774,7 +815,7 @@ function OnInteract(userId)
 end
 
 function Respawn()
-    coroutine.yield(wait(respawnTime))
+    wait(respawnTime)
     self:SetActive(true)
     self:SetPosition(originalPos.x, originalPos.y, originalPos.z)
     self:Log("Respawned!")
@@ -830,7 +871,7 @@ function OnActivate(hand)
     self:Log("Trigger pressed by " .. hand .. " while holding me!")
     self:SetColor(1, 0, 0, 1)   -- flash red
     StartCoroutine(function()
-        coroutine.yield(wait(0.3))
+        wait(0.3)
         self:SetColor(0, 1, 0, 1)
     end)
 end
